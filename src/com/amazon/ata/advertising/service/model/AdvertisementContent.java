@@ -15,8 +15,8 @@ public class AdvertisementContent {
     public static final String MARKETPLACE_ID_INDEX = "MarketplaceIdIndex";
 
     private String contentId;
-    private String renderableContent;
-    private String marketplaceId;
+    private String renderableContent = "";
+    private String marketplaceId = "";
 
     /**
      * An Advertisement's content contains an id that is unique to the template used to generate its renderable content.

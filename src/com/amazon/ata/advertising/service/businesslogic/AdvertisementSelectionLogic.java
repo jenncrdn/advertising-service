@@ -4,9 +4,10 @@ import com.amazon.ata.advertising.service.dao.ReadableDao;
 import com.amazon.ata.advertising.service.model.AdvertisementContent;
 import com.amazon.ata.advertising.service.model.EmptyGeneratedAdvertisement;
 import com.amazon.ata.advertising.service.model.GeneratedAdvertisement;
+import com.amazon.ata.advertising.service.model.RequestContext;
+import com.amazon.ata.advertising.service.targeting.TargetingEvaluator;
 import com.amazon.ata.advertising.service.targeting.TargetingGroup;
 
-import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -56,19 +57,57 @@ public class AdvertisementSelectionLogic {
      *     not be generated.
      */
     public GeneratedAdvertisement selectAdvertisement(String customerId, String marketplaceId) {
-        GeneratedAdvertisement generatedAdvertisement = new EmptyGeneratedAdvertisement();
+        TargetingEvaluator evaluator = new TargetingEvaluator(new RequestContext(customerId, marketplaceId));
+
+        SortedMap<TargetingGroup, AdvertisementContent> treeMap = new TreeMap<>(Comparator.comparingDouble(TargetingGroup::getClickThroughRate).reversed());
+
         if (StringUtils.isEmpty(marketplaceId)) {
             LOG.warn("MarketplaceId cannot be null or empty. Returning empty ad.");
-        } else {
-            final List<AdvertisementContent> contents = contentDao.get(marketplaceId);
+            return new EmptyGeneratedAdvertisement();
+        }
+//            final List<AdvertisementContent> contents = contentDao.get(marketplaceId);
+//
+//            if (CollectionUtils.isNotEmpty(contents)) {
+//                AdvertisementContent randomAdvertisementContent = contents.get(random.nextInt(contents.size()));
+//                generatedAdvertisement = new GeneratedAdvertisement(randomAdvertisementContent);
+//            }
 
-            if (CollectionUtils.isNotEmpty(contents)) {
-                AdvertisementContent randomAdvertisementContent = contents.get(random.nextInt(contents.size()));
-                generatedAdvertisement = new GeneratedAdvertisement(randomAdvertisementContent);
+        // go through each advertisementContent and look at the targetingGroup. If the customerID matches on all targetingGroups, return that advertisementContent.
+
+//        contentDao.get(marketplaceId)
+//            .forEach(advertisementContent -> {
+//                targetingGroupDao.get(advertisementContent.getContentId())
+//                    .stream()
+//                    .sorted(Comparator.comparingDouble(TargetingGroup::getClickThroughRate).reversed())
+//                    .filter(targetingGroup -> evaluator.evaluate(targetingGroup).isTrue())
+//                    .findFirst()
+//                    .ifPresent(targetingGroup -> adContent.add(advertisementContent));
+//                });
+
+        List<AdvertisementContent> adContent = contentDao.get(marketplaceId);
+
+        for (AdvertisementContent advertisementContent : adContent) {
+            List<TargetingGroup> groups = targetingGroupDao.get(advertisementContent.getContentId());
+            if (groups != null) {
+                groups.stream()
+                    .sorted(treeMap.comparator())
+                    .filter(targetingGroup -> evaluator.evaluate(targetingGroup).isTrue())
+                    .findFirst()
+                    .ifPresent(targetingGroup -> treeMap.put(targetingGroup, advertisementContent));
+
             }
-
+//                    System.out.println(groups);
+//                    .stream()
+//                    .sorted(treeMap.comparator())
+//                    .filter(targetingGroup -> evaluator.evaluate(targetingGroup).isTrue())
+//                    .findFirst()
+//                    .ifPresent(targetingGroup -> treeMap.put(targetingGroup, advertisementContent));
         }
 
-        return generatedAdvertisement;
+        if (!treeMap.isEmpty()) {
+            return new GeneratedAdvertisement(treeMap.get(treeMap.firstKey()));
+        }
+
+        return new EmptyGeneratedAdvertisement();
     }
 }
