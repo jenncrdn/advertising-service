@@ -65,44 +65,16 @@ public class AdvertisementSelectionLogic {
             LOG.warn("MarketplaceId cannot be null or empty. Returning empty ad.");
             return new EmptyGeneratedAdvertisement();
         }
-//            final List<AdvertisementContent> contents = contentDao.get(marketplaceId);
-//
-//            if (CollectionUtils.isNotEmpty(contents)) {
-//                AdvertisementContent randomAdvertisementContent = contents.get(random.nextInt(contents.size()));
-//                generatedAdvertisement = new GeneratedAdvertisement(randomAdvertisementContent);
-//            }
 
-        // go through each advertisementContent and look at the targetingGroup. If the customerID matches on all targetingGroups, return that advertisementContent.
-
-//        contentDao.get(marketplaceId)
-//            .forEach(advertisementContent -> {
-//                targetingGroupDao.get(advertisementContent.getContentId())
-//                    .stream()
-//                    .sorted(Comparator.comparingDouble(TargetingGroup::getClickThroughRate).reversed())
-//                    .filter(targetingGroup -> evaluator.evaluate(targetingGroup).isTrue())
-//                    .findFirst()
-//                    .ifPresent(targetingGroup -> adContent.add(advertisementContent));
-//                });
-
-        List<AdvertisementContent> adContent = contentDao.get(marketplaceId);
-
-        for (AdvertisementContent advertisementContent : adContent) {
-            List<TargetingGroup> groups = targetingGroupDao.get(advertisementContent.getContentId());
-            if (groups != null) {
-                groups.stream()
+        contentDao.get(marketplaceId)
+            .forEach(advertisementContent -> {
+            targetingGroupDao.get(advertisementContent.getContentId())
+                    .stream()
                     .sorted(treeMap.comparator())
                     .filter(targetingGroup -> evaluator.evaluate(targetingGroup).isTrue())
                     .findFirst()
                     .ifPresent(targetingGroup -> treeMap.put(targetingGroup, advertisementContent));
-
-            }
-//                    System.out.println(groups);
-//                    .stream()
-//                    .sorted(treeMap.comparator())
-//                    .filter(targetingGroup -> evaluator.evaluate(targetingGroup).isTrue())
-//                    .findFirst()
-//                    .ifPresent(targetingGroup -> treeMap.put(targetingGroup, advertisementContent));
-        }
+        });
 
         if (!treeMap.isEmpty()) {
             return new GeneratedAdvertisement(treeMap.get(treeMap.firstKey()));
